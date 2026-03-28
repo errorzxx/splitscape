@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SplitScape — Smart Expense Splitter</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --gold:#f59e0b;--gold-dim:rgba(245,158,11,0.15);--gold-border:rgba(245,158,11,0.3);
+  --glass:rgba(255,255,255,0.055);--glass-border:rgba(255,255,255,0.09);--glass-hover:rgba(255,255,255,0.09);
+  --text:#fff;--muted:rgba(255,255,255,0.42);--mid:rgba(255,255,255,0.68);
+  --green:#10b981;--red:#f43f5e;--r:20px;
+}
+body{font-family:'DM Sans',sans-serif;background:#07080f;color:#fff;min-height:100vh;overflow-x:hidden}
+
+/* ── AURORA ── */
+.aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);animation:drift 14s ease-in-out infinite}
+.b1{width:640px;height:640px;background:radial-gradient(circle,#4338ca,transparent 68%);top:-200px;left:-180px;opacity:.3}
+.b2{width:520px;height:520px;background:radial-gradient(circle,#0891b2,transparent 68%);top:25%;right:-160px;opacity:.28;animation-delay:-5s}
+.b3{width:460px;height:460px;background:radial-gradient(circle,#be185d,transparent 68%);bottom:-120px;left:28%;opacity:.26;animation-delay:-9s}
+.b4{width:380px;height:380px;background:radial-gradient(circle,#d97706,transparent 68%);top:55%;left:5%;opacity:.18;animation-delay:-3s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(28px,-28px) scale(1.04)}66%{transform:translate(-18px,22px) scale(.97)}}
+
+/* grain */
+.grain{position:fixed;inset:0;z-index:1;opacity:.032;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none}
+
+#app{position:relative;z-index:2;min-height:100vh}
+
+/* ── GLASS ── */
+.g{background:var(--glass);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid var(--glass-border);border-radius:var(--r)}
+.gs{background:var(--glass);backdrop-filter:blur(14px);border:1px solid var(--glass-border);border-radius:12px}
+
+/* ── INPUTS ── */
+.inp{width:100%;padding:13px 16px;background:rgba(255,255,255,0.038);border:1px solid var(--glass-border);border-radius:10px;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s}
+.inp:focus{border-color:var(--gold)}
+.inp::placeholder{color:var(--muted)}
+select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 12 12'%3E%3Cpath fill='rgba(255,255,255,.4)' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+select.inp option{background:#13151f;color:#fff}
+
+/* ── BUTTONS ── */
+.btn{width:100%;padding:14px 20px;border-radius:12px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;transition:all .2s}
+.btn-p{background:linear-gradient(135deg,#f59e0b,#f97316);color:#000}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 10px 32px rgba(245,158,11,.32)}
+.btn-g{background:var(--glass);color:#fff;border:1px solid var(--glass-border)}
+.btn-g:hover{background:var(--glass-hover)}
+.btn-sm{padding:8px 14px;border-radius:8px;border:1px solid var(--glass-border);background:var(--glass);color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-sm:hover{background:var(--glass-hover)}
+
+/* ── DIVIDER ── */
+.divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--glass-border)}
+
+/* ── FORM ── */
+.fr{margin-bottom:14px}
+.fl{font-size:11px;color:var(--muted);margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.8px}
+
+/* ── SESSION SCREEN ── */
+#ss{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.scard{width:100%;max-width:420px;padding:44px 36px;text-align:center}
+.logo{display:inline-flex;align-items:center;gap:10px;margin-bottom:28px}
+.logo-ico{width:42px;height:42px;background:linear-gradient(135deg,#f59e0b,#be185d);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#000;font-family:'Syne',sans-serif}
+.logo-txt{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.5px}
+.s-title{font-family:'Syne',sans-serif;font-size:34px;font-weight:800;line-height:1.12;margin-bottom:10px;letter-spacing:-1px}
+.s-tag{font-size:13px;color:var(--muted);margin-bottom:36px;line-height:1.65}
+
+/* ── SETUP SCREEN ── */
+#su{display:none;min-height:100vh;align-items:center;justify-content:center;padding:24px;flex-direction:column}
+.pchip{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);margin-bottom:6px}
+.pchip-name{flex:1;font-size:14px}
+.pchip-rm{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+.pchip-rm:hover{color:var(--red)}
+
+/* ── MAIN APP ── */
+#sa{display:none;flex-direction:column;min-height:100vh}
+.app-hdr{padding:20px 22px 0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.trip-name{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;letter-spacing:-.4px}
+.code-badge{padding:4px 10px;background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:20px;font-size:11px;color:var(--gold);font-weight:700;letter-spacing:1.2px;cursor:pointer;user-select:none}
+.code-badge:hover{background:rgba(245,158,11,.22)}
+.av-stack{display:flex}
+.av-mini{width:27px;height:27px;border-radius:50%;border:2px solid #07080f;margin-left:-7px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0}
+
+/* Strip */
+.strip{display:flex;gap:10px;padding:16px 22px;overflow-x:auto;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.pill{flex-shrink:0;padding:14px 18px;border-radius:16px;min-width:126px}
+.pill-l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.pill-v{font-family:'Syne',sans-serif;font-size:21px;font-weight:800}
+
+/* Tabs */
+.tabs{display:flex;gap:3px;padding:0 22px 14px}
+.tab{flex:1;padding:10px 6px;border-radius:10px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12.5px;font-weight:500;transition:all .18s;text-align:center}
+.tab.act{background:var(--glass);border:1px solid var(--glass-border);color:#fff}
+
+.tc{flex:1;padding:0 22px 110px;overflow-y:auto}
+.tp{display:none}
+.tp.act{display:block}
+
+/* ── EXPENSE ITEM ── */
+.ei{display:flex;align-items:center;gap:13px;padding:13px 15px;margin-bottom:7px;transition:all .15s;cursor:default;position:relative}
+.ei:hover{background:rgba(255,255,255,0.07) !important}
+.cat-ico{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;font-weight:700}
+.ei-info{flex:1;min-width:0}
+.ei-title{font-size:14.5px;font-weight:500;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ei-meta{font-size:11.5px;color:var(--muted)}
+.ei-amt{font-family:'Syne',sans-serif;font-size:15.5px;font-weight:700;color:var(--gold);text-align:right}
+.ei-sub{font-size:10.5px;color:var(--muted);text-align:right;margin-top:2px}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;font-size:13px;opacity:0;transition:opacity .2s;border-radius:5px;margin-left:6px}
+.ei:hover .del-btn{opacity:1}
+.del-btn:hover{color:var(--red)}
+
+/* ── BALANCE ── */
+.bal-card{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;margin-bottom:7px}
+.bal-l{display:flex;align-items:center;gap:11px}
+.av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0}
+.bal-name{font-size:14px;font-weight:500}
+.bal-sub{font-size:11.5px;color:var(--muted)}
+.bal-amt{font-family:'Syne',sans-serif;font-size:16.5px;font-weight:800}
+
+/* ── SETTLE ── */
+.sit{display:flex;align-items:center;gap:11px;padding:14px 15px;margin-bottom:7px}
+.s-amt{margin-left:auto;font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--gold)}
+.mdbtn{padding:5px 11px;border-radius:7px;border:1px solid var(--glass-border);background:none;color:var(--muted);font-size:11px;cursor:pointer;transition:all .18s;margin-left:6px;font-family:'DM Sans',sans-serif}
+.mdbtn:hover{background:rgba(16,185,129,.15);border-color:var(--green);color:var(--green)}
+.mdbtn.done{background:rgba(16,185,129,.15);border-color:var(--green);color:var(--green)}
+.wa-box{background:rgba(37,211,102,.07);border:1px solid rgba(37,211,102,.2);border-radius:12px;padding:14px;font-size:12.5px;line-height:1.75;color:var(--mid);white-space:pre-wrap;font-family:monospace;margin-top:14px}
+
+/* ── STATS ── */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+.sc{padding:17px 15px}
+.sl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.sv{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;line-height:1;margin-bottom:3px}
+.ss2{font-size:11.5px;color:var(--muted)}
+.cbar{margin-bottom:10px}
+.cbh{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px}
+.btrack{height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden}
+.bfill{height:100%;border-radius:2px;transition:width .5s ease}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:28px;right:22px;z-index:100;width:56px;height:56px;border-radius:16px;border:none;background:linear-gradient(135deg,#f59e0b,#f97316);color:#000;font-size:26px;cursor:pointer;box-shadow:0 8px 28px rgba(245,158,11,.38);transition:all .22s;display:flex;align-items:center;justify-content:center;font-weight:300;line-height:1}
+.fab:hover{transform:scale(1.08) rotate(90deg);box-shadow:0 14px 38px rgba(245,158,11,.46)}
+
+/* ── MODAL ── */
+.mo{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);display:none;align-items:flex-end;justify-content:center}
+.mo.open{display:flex;animation:fi .18s}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.ms{width:100%;max-width:520px;background:#0c0e1a;border:1px solid var(--glass-border);border-radius:22px 22px 0 0;padding:24px 22px 38px;max-height:93vh;overflow-y:auto;animation:su .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mhandle{width:34px;height:3px;background:rgba(255,255,255,.13);border-radius:2px;margin:0 auto 22px}
+.mtitle{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;margin-bottom:18px}
+.amt-wrap{position:relative}
+.amt-pfx{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--gold);font-family:'Syne',sans-serif;font-weight:700;font-size:15px}
+.amt-wrap .inp{padding-left:30px}
+
+/* Cat grid */
+.cgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.cbtn{padding:10px 5px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.038);cursor:pointer;text-align:center;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:10.5px;font-family:'DM Sans',sans-serif}
+.cbtn-ico{font-size:17px;font-weight:700;line-height:1}
+.cbtn:hover{border-color:rgba(255,255,255,.18)}
+.cbtn.act{border-color:var(--gold);background:var(--gold-dim);color:var(--gold)}
+
+/* Split type */
+.stabs{display:flex;gap:3px;background:rgba(255,255,255,.04);padding:4px;border-radius:10px;margin-bottom:12px}
+.stab{flex:1;padding:8px 4px;border-radius:7px;border:none;background:none;color:var(--muted);font-size:12px;cursor:pointer;transition:all .18s;font-family:'DM Sans',sans-serif}
+.stab.act{background:rgba(255,255,255,.1);color:#fff}
+.srow{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.srow-name{flex:1;font-size:13.5px}
+.srow-inp{width:86px}
+
+/* Toast */
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(16px);background:rgba(15,186,129,.92);color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:all .28s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Misc */
+.sec{font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;margin-top:18px}
+.empty{text-align:center;padding:56px 24px;color:var(--muted)}
+.empty-ico{font-size:36px;margin-bottom:14px;opacity:.35;font-family:'Syne',sans-serif;font-weight:800}
+.empty-t{font-family:'Syne',sans-serif;font-size:17px;color:var(--mid);margin-bottom:6px;font-weight:700}
+.ebar{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.ig{display:flex;gap:8px}
+
+@media(min-width:520px){.ms{border-radius:22px;margin-bottom:22px}.mo{align-items:center}}
+@keyframes fsi{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* Custom select dropdown */
+.csel-wrap{position:relative}
+.csel-trigger{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:rgba(255,255,255,0.038);border:1px solid var(--glass-border);border-radius:10px;cursor:pointer;transition:border-color .2s;user-select:none}
+.csel-trigger:hover,.csel-trigger.open{border-color:var(--gold)}
+.csel-arr{color:rgba(255,255,255,.4);font-size:12px;transition:transform .2s;flex-shrink:0}
+.csel-trigger.open .csel-arr{transform:rotate(180deg)}
+.csel-val{display:flex;align-items:center;gap:9px;font-size:15px;flex:1;min-width:0}
+.csel-drop{position:absolute;left:0;right:0;top:calc(100% + 6px);background:#13151f;border:1px solid var(--glass-border);border-radius:12px;overflow:hidden;z-index:300;display:none;box-shadow:0 16px 48px rgba(0,0,0,.6)}
+.csel-drop.open{display:block;animation:fi .15s}
+.csel-opt{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;transition:background .15s;font-size:14px;color:#fff}
+.csel-opt:hover{background:rgba(255,255,255,.08)}
+.csel-opt.sel{background:var(--gold-dim);color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="aurora">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
+</div>
+<div class="grain"></div>
+<div id="app">
+
+<!-- SESSION -->
+<div id="ss">
+  <div class="g scard">
+    <div class="logo">
+      <div class="logo-ico">◈</div>
+      <span class="logo-txt">SplitScape</span>
+    </div>
+    <div class="s-title">Split without<br>the stress.</div>
+    <p class="s-tag">Smart expense splitting for trips, outings &amp; shared moments.<br>No sign-up. Ever.</p>
+    <div class="fr">
+      <input type="text" class="inp" id="tn" placeholder="Name your trip — Goa 2026, Leh Ride..." maxlength="30">
+    </div>
+    <button class="btn btn-p" onclick="createSesh()">Create New Trip</button>
+    <div class="divider">or join one</div>
+    <div class="ig">
+      <input type="text" class="inp" id="jc" placeholder="6-char code" maxlength="6" style="text-transform:uppercase">
+      <button class="btn btn-g" style="width:auto;padding:0 20px" onclick="joinSesh()">Join</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="su">
+  <div class="g scard" style="max-width:450px">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:22px">
+      <div class="logo-ico" style="width:30px;height:30px;font-size:13px">◈</div>
+      <span style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800" id="su-name"></span>
+      <div class="code-badge" id="su-code" style="margin-left:auto"></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Who's coming?</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">Add all members. You can always add more later.</p>
+    <div id="pl"></div>
+    <div class="ig" style="margin-top:8px">
+      <input type="text" class="inp" id="pi" placeholder="Name..." maxlength="20">
+      <button class="btn btn-g" style="width:auto;padding:0 20px" onclick="addP()">Add</button>
+    </div>
+    <button class="btn btn-p" style="margin-top:18px" onclick="startApp()">Start Splitting</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="sa">
+  <div class="app-hdr">
+    <div>
+      <div class="trip-name" id="h-name"></div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:2px" id="h-date"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="code-badge" id="h-code" onclick="copyCode()" title="Click to copy"></div>
+      <div class="av-stack" id="h-avs"></div>
+    </div>
+  </div>
+
+  <!-- Strip -->
+  <div class="strip">
+    <div class="g pill"><div class="pill-l">Total Spent</div><div class="pill-v" id="p-tot">₹0</div></div>
+    <div class="g pill"><div class="pill-l">Per Person</div><div class="pill-v" id="p-per">₹0</div></div>
+    <div class="g pill"><div class="pill-l">Expenses</div><div class="pill-v" id="p-cnt">0</div></div>
+    <div class="g pill"><div class="pill-l">Transactions</div><div class="pill-v" id="p-txn">—</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab act" onclick="sw('expenses',this)">Expenses</button>
+    <button class="tab" onclick="sw('balances',this)">Balances</button>
+    <button class="tab" onclick="sw('settle',this)">Settle Up</button>
+    <button class="tab" onclick="sw('stats',this)">Stats</button>
+  </div>
+
+  <div class="tc">
+    <div class="tp act" id="t-expenses"><div id="el"></div></div>
+    <div class="tp" id="t-balances"><div id="bl"></div></div>
+    <div class="tp" id="t-settle">
+      <div class="ebar">
+        <button class="btn-sm" onclick="showWA()">↗ WhatsApp</button>
+        <button class="btn-sm" onclick="window.print()">⎙ Print / PDF</button>
+        <button class="btn-sm" onclick="copySett()">⧉ Copy Text</button>
+      </div>
+      <div id="sl"></div>
+      <div id="wa-sec" style="display:none">
+        <div class="sec" style="margin-top:18px">WhatsApp Summary</div>
+        <div class="wa-box" id="wa-prev"></div>
+        <button class="btn btn-g" style="margin-top:10px" onclick="copyWA()">Copy Message</button>
+      </div>
+    </div>
+    <div class="tp" id="t-stats">
+      <div class="sg" id="sg"></div>
+      <div class="sec" style="margin-top:6px">Spending by Category</div>
+      <div class="gs" style="padding:15px;margin-bottom:14px"><div id="cbd"></div></div>
+      <div class="sec">Who Paid Most</div>
+      <div id="spl"></div>
+    </div>
+  </div>
+
+  <button class="fab" onclick="openM()">+</button>
+</div>
+</div>
+
+<!-- ADD EXPENSE MODAL -->
+<div class="mo" id="mo" onclick="closeOut(event)">
+  <div class="ms">
+    <div class="mhandle"></div>
+    <div class="mtitle">New Expense</div>
+    <div class="fr">
+      <label class="fl">What was it for?</label>
+      <input type="text" class="inp" id="e-t" placeholder="e.g. Beach dinner, Petrol, Hotel...">
+    </div>
+    <div class="fr">
+      <label class="fl">Amount</label>
+      <div class="amt-wrap">
+        <span class="amt-pfx">₹</span>
+        <input type="number" class="inp" id="e-a" placeholder="0" min="0">
+      </div>
+    </div>
+    <div class="fr">
+      <label class="fl">Paid by</label>
+      <div class="csel-wrap" id="csel-wrap">
+        <div class="csel-trigger" id="csel-trigger" onclick="toggleCSel()">
+          <div class="csel-val" id="csel-val"><span style="color:var(--muted)">Select person...</span></div>
+          <span class="csel-arr">&#9662;</span>
+        </div>
+        <div class="csel-drop" id="csel-drop"></div>
+      </div>
+      <input type="hidden" id="e-p">
+    </div>
+    <div class="fr">
+      <label class="fl">Category</label>
+      <div class="cgrid" id="cg"></div>
+    </div>
+    <div class="fr">
+      <label class="fl">How to split?</label>
+      <div class="stabs">
+        <button class="stab act" onclick="setST('equal',this)">Equal</button>
+        <button class="stab" onclick="setST('custom',this)">Custom ₹</button>
+        <button class="stab" onclick="setST('percent',this)">Percent</button>
+        <button class="stab" onclick="setST('exclude',this)">Exclude</button>
+      </div>
+      <div id="sr"></div>
+    </div>
+    <div class="fr">
+      <label class="fl">Note (optional)</label>
+      <input type="text" class="inp" id="e-n" placeholder="Any extra detail...">
+    </div>
+    <button class="btn btn-p" onclick="addExp()">Add Expense</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════ STATE ══════════════════════
+const S = {
+  sesh:{code:'',name:''},
+  parts:[],
+  exps:[],
+  stype:'equal',
+  scat:'food',
+  done:new Set()
+};
+
+const CATS=[
+  {id:'food',  sym:'◉',lbl:'Food',    clr:'#f97316'},
+  {id:'ride',  sym:'◐',lbl:'Ride',    clr:'#3b82f6'},
+  {id:'stay',  sym:'□',lbl:'Stay',    clr:'#8b5cf6'},
+  {id:'drinks',sym:'◑',lbl:'Drinks',  clr:'#ec4899'},
+  {id:'entry', sym:'◎',lbl:'Entry',   clr:'#14b8a6'},
+  {id:'shop',  sym:'◈',lbl:'Shop',    clr:'#f59e0b'},
+  {id:'fun',   sym:'◆',lbl:'Fun',     clr:'#10b981'},
+  {id:'other', sym:'○',lbl:'Other',   clr:'#6b7280'}
+];
+
+const AVC=[
+  'linear-gradient(135deg,#4f46e5,#7c3aed)',
+  'linear-gradient(135deg,#059669,#0d9488)',
+  'linear-gradient(135deg,#dc2626,#be185d)',
+  'linear-gradient(135deg,#d97706,#f97316)',
+  'linear-gradient(135deg,#2563eb,#0ea5e9)',
+  'linear-gradient(135deg,#7c3aed,#ec4899)',
+  'linear-gradient(135deg,#065f46,#047857)',
+  'linear-gradient(135deg,#9d174d,#db2777)',
+];
+
+function avc(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))&0xffff;return AVC[h%AVC.length]}
+function ini(n){return n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
+function fmt(v){if(!v&&v!==0)return'0';const n=Math.abs(v);return n%1===0?n.toLocaleString('en-IN'):n.toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2})}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function today(){return new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short'})}
+
+// ══════════════════════ SESSION ══════════════════════
+function genCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
+
+function createSesh(){
+  const n=document.getElementById('tn').value.trim();
+  if(!n){toast('Give your trip a name first');return}
+  S.sesh={code:genCode(),name:n};
+  gotoSetup();
+}
+
+function joinSesh(){
+  const c=document.getElementById('jc').value.trim().toUpperCase();
+  if(c.length!==6){toast('Enter a valid 6-character code');return}
+  S.sesh={code:c,name:'Shared Trip'};
+  gotoSetup();
+}
+
+function gotoSetup(){
+  document.getElementById('ss').style.display='none';
+  const su=document.getElementById('su');
+  su.style.display='flex';
+  document.getElementById('su-name').textContent=S.sesh.name;
+  document.getElementById('su-code').textContent=S.sesh.code;
+  renderPL();
+}
+
+function addP(){
+  const el=document.getElementById('pi');
+  const n=el.value.trim();
+  if(!n)return;
+  if(S.parts.includes(n)){toast('Already added');return}
+  if(S.parts.length>=14){toast('Max 14 people');return}
+  S.parts.push(n);el.value='';renderPL();
+}
+
+function removeP(n){S.parts=S.parts.filter(p=>p!==n);renderPL()}
+
+function renderPL(){
+  const el=document.getElementById('pl');
+  if(!S.parts.length){el.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:10px">No one added yet...</div>';return}
+  el.innerHTML=S.parts.map(p=>`<div class="pchip">
+    <div class="av" style="width:26px;height:26px;font-size:10px;background:${avc(p)}">${ini(p)}</div>
+    <span class="pchip-name">${p}</span>
+    <button class="pchip-rm" onclick="removeP('${p}')">×</button>
+  </div>`).join('');
+}
+
+document.getElementById('pi').addEventListener('keydown',e=>{if(e.key==='Enter')addP()});
+document.getElementById('tn').addEventListener('keydown',e=>{if(e.key==='Enter')createSesh()});
+document.getElementById('jc').addEventListener('keydown',e=>{if(e.key==='Enter')joinSesh()});
+
+function startApp(){
+  if(S.parts.length<2){toast('Add at least 2 people');return}
+  document.getElementById('su').style.display='none';
+  const sa=document.getElementById('sa');
+  sa.style.display='flex';sa.style.flexDirection='column';
+  document.getElementById('h-name').textContent=S.sesh.name;
+  document.getElementById('h-code').textContent=S.sesh.code;
+  document.getElementById('h-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+  renderAvs();renderAll();
+}
+
+function renderAvs(){
+  const el=document.getElementById('h-avs');
+  const show=S.parts.slice(0,5);
+  el.innerHTML=show.map(p=>`<div class="av-mini" style="background:${avc(p)}">${ini(p)}</div>`).join('')+(S.parts.length>5?`<div class="av-mini" style="background:rgba(255,255,255,.1);color:var(--muted);font-size:9px">+${S.parts.length-5}</div>`:'');
+}
+
+// ══════════════════════ RENDER ALL ══════════════════════
+function renderAll(){renderExps();renderBals();renderSettle();renderStats();renderStrip()}
+
+function renderStrip(){
+  const tot=S.exps.reduce((s,e)=>s+e.amt,0);
+  const per=S.parts.length?tot/S.parts.length:0;
+  const txns=calcSettle();
+  document.getElementById('p-tot').textContent='₹'+fmt(tot);
+  document.getElementById('p-per').textContent='₹'+fmt(per);
+  document.getElementById('p-cnt').textContent=S.exps.length;
+  document.getElementById('p-txn').textContent=txns.length+(txns.length===1?' txn':' txns');
+}
+
+// ══════════════════════ EXPENSES ══════════════════════
+function renderExps(){
+  const el=document.getElementById('el');
+  if(!S.exps.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico">◎</div><div class="empty-t">No expenses yet</div><div>Tap the + button to log your first one</div></div>`;return;
+  }
+  const grp={};
+  S.exps.forEach(e=>{const d=e.date||today();if(!grp[d])grp[d]=[];grp[d].push(e)});
+  let h='';
+  for(const[d,es]of Object.entries(grp)){
+    h+=`<div class="sec">${d}</div>`;
+    es.forEach(e=>{
+      const cat=CATS.find(c=>c.id===e.cat)||CATS[7];
+      h+=`<div class="g ei" style="animation:fsi .28s ease">
+        <div class="cat-ico" style="background:${cat.clr}1e;color:${cat.clr}">${cat.sym}</div>
+        <div class="ei-info">
+          <div class="ei-title">${e.ttl}</div>
+          <div class="ei-meta">Paid by <b>${e.by}</b> · ${cat.lbl}${e.note?' · '+e.note:''}</div>
+        </div>
+        <div>
+          <div class="ei-amt">₹${fmt(e.amt)}</div>
+          <div class="ei-sub">${splitDesc(e)}</div>
+        </div>
+        <button class="del-btn" onclick="delExp('${e.id}')">✕</button>
+      </div>`;
+    });
+  }
+  el.innerHTML=h;
+}
+
+function splitDesc(e){
+  if(e.st==='equal')return 'equal split';
+  if(e.st==='custom')return 'custom split';
+  if(e.st==='percent')return 'by percent';
+  if(e.st==='exclude'){const inc=Object.entries(e.spl).filter(([,v])=>v>0).length;return`${inc} of ${S.parts.length} people`}
+  return '';
+}
+
+function delExp(id){S.exps=S.exps.filter(e=>e.id!==id);renderAll();toast('Expense removed')}
+
+// ══════════════════════ BALANCES ══════════════════════
+function calcBals(){
+  const b={};S.parts.forEach(p=>b[p]=0);
+  S.exps.forEach(e=>{
+    b[e.by]=(b[e.by]||0)+e.amt;
+    const spl=getSpl(e);
+    Object.entries(spl).forEach(([p,a])=>{b[p]=(b[p]||0)-a});
+  });
+  return b;
+}
+
+function getSpl(e){
+  if(e.st==='equal'){const ea=e.amt/S.parts.length;const r={};S.parts.forEach(p=>r[p]=ea);return r}
+  return e.spl||{};
+}
+
+function renderBals(){
+  const bals=calcBals();
+  const el=document.getElementById('bl');
+  const sorted=Object.entries(bals).sort((a,b)=>b[1]-a[1]);
+  el.innerHTML=sorted.map(([n,b])=>{
+    const pos=b>=0;
+    const clr=Math.abs(b)<0.01?'var(--muted)':pos?'var(--green)':'var(--red)';
+    const lbl=Math.abs(b)<0.01?'all even':pos?`gets back ₹${fmt(b)}`:`owes ₹${fmt(-b)}`;
+    return`<div class="g bal-card">
+      <div class="bal-l">
+        <div class="av" style="background:${avc(n)}">${ini(n)}</div>
+        <div><div class="bal-name">${n}</div><div class="bal-sub">${lbl}</div></div>
+      </div>
+      <div class="bal-amt" style="color:${clr}">${b>=0?'+':'-'}₹${fmt(Math.abs(b))}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════ SETTLE ALGORITHM ══════════════════════
+function calcSettle(){
+  const bals=calcBals();
+  const cr=[],dr=[];
+  Object.entries(bals).forEach(([n,b])=>{
+    if(b>0.01)cr.push({n,a:b});
+    else if(b<-0.01)dr.push({n,a:-b});
+  });
+  cr.sort((a,b)=>b.a-a.a);dr.sort((a,b)=>b.a-a.a);
+  const txns=[];let ci=0,di=0;
+  while(ci<cr.length&&di<dr.length){
+    const a=Math.min(cr[ci].a,dr[di].a);
+    if(a>0.01)txns.push({fr:dr[di].n,to:cr[ci].n,a});
+    cr[ci].a-=a;dr[di].a-=a;
+    if(cr[ci].a<0.01)ci++;
+    if(dr[di].a<0.01)di++;
+  }
+  return txns;
+}
+
+function renderSettle(){
+  const txns=calcSettle();
+  const el=document.getElementById('sl');
+  if(!txns.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico">◆</div><div class="empty-t">${S.exps.length?'All settled up!':'No expenses yet'}</div><div>${S.exps.length?'Everyone is perfectly even.':'Add expenses to see who owes what.'}</div></div>`;return;
+  }
+  el.innerHTML=txns.map((t,i)=>{
+    const dn=S.done.has(i);
+    return`<div class="g sit" style="${dn?'opacity:.35;':''}">
+      <div class="av" style="width:30px;height:30px;font-size:10px;background:${avc(t.fr)}">${ini(t.fr)}</div>
+      <div style="min-width:0">
+        <div style="font-size:10.5px;color:var(--muted)">Pay</div>
+        <div style="font-weight:600;font-size:14px">${t.fr}</div>
+      </div>
+      <div style="color:var(--muted);font-size:18px;flex-shrink:0">→</div>
+      <div class="av" style="width:30px;height:30px;font-size:10px;background:${avc(t.to)}">${ini(t.to)}</div>
+      <div style="min-width:0">
+        <div style="font-size:10.5px;color:var(--muted)">To</div>
+        <div style="font-weight:600;font-size:14px">${t.to}</div>
+      </div>
+      <div class="s-amt">₹${fmt(t.a)}</div>
+      <button class="mdbtn ${dn?'done':''}" onclick="toggleDone(${i})">${dn?'✓ Done':'Mark'}</button>
+    </div>`;
+  }).join('');
+  document.getElementById('wa-sec').style.display='none';
+}
+
+function toggleDone(i){S.done.has(i)?S.done.delete(i):S.done.add(i);renderSettle()}
+
+// ══════════════════════ STATS ══════════════════════
+function renderStats(){
+  const tot=S.exps.reduce((s,e)=>s+e.amt,0);
+  const per=S.parts.length?tot/S.parts.length:0;
+  const paid={};S.parts.forEach(p=>paid[p]=0);
+  S.exps.forEach(e=>paid[e.by]=(paid[e.by]||0)+e.amt);
+  const top=Object.entries(paid).sort((a,b)=>b[1]-a[1])[0];
+  const catT={};CATS.forEach(c=>catT[c.id]=0);
+  S.exps.forEach(e=>catT[e.cat]=(catT[e.cat]||0)+e.amt);
+  const topC=Object.entries(catT).sort((a,b)=>b[1]-a[1])[0];
+  const topCat=CATS.find(c=>c.id===topC[0]);
+
+  document.getElementById('sg').innerHTML=`
+    <div class="g sc"><div class="sl">Trip Total</div><div class="sv">₹${fmt(tot)}</div><div class="ss2">${S.exps.length} expense${S.exps.length!==1?'s':''}</div></div>
+    <div class="g sc"><div class="sl">Per Person</div><div class="sv">₹${fmt(per)}</div><div class="ss2">fair share</div></div>
+    <div class="g sc"><div class="sl">Top Payer</div><div class="sv" style="font-size:16px">${top?top[0]:'—'}</div><div class="ss2">${top&&top[1]>0?'₹'+fmt(top[1])+' paid':'nothing yet'}</div></div>
+    <div class="g sc"><div class="sl">Big Category</div><div class="sv" style="font-size:16px">${topCat&&topC[1]>0?topCat.lbl:'—'}</div><div class="ss2">${topC[1]>0?'₹'+fmt(topC[1]):'nothing yet'}</div></div>`;
+
+  const catSorted=Object.entries(catT).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const maxC=catSorted[0]?.[1]||1;
+  document.getElementById('cbd').innerHTML=catSorted.length?catSorted.map(([id,a])=>{
+    const c=CATS.find(x=>x.id===id);const pct=(a/tot*100).toFixed(1);
+    return`<div class="cbar">
+      <div class="cbh"><span style="color:${c.clr}">${c.sym} ${c.lbl}</span><span style="color:var(--muted)">₹${fmt(a)} · ${pct}%</span></div>
+      <div class="btrack"><div class="bfill" style="width:${(a/maxC*100).toFixed(1)}%;background:${c.clr}"></div></div>
+    </div>`;
+  }).join(''):'<div style="color:var(--muted);font-size:13px">No expenses logged yet</div>';
+
+  document.getElementById('spl').innerHTML=Object.entries(paid).sort((a,b)=>b[1]-a[1]).map(([n,a])=>`
+    <div class="g bal-card" style="margin-bottom:7px">
+      <div class="bal-l">
+        <div class="av" style="background:${avc(n)}">${ini(n)}</div>
+        <div><div class="bal-name">${n}</div><div class="bal-sub">${S.exps.filter(e=>e.by===n).length} payment${S.exps.filter(e=>e.by===n).length!==1?'s':''}</div></div>
+      </div>
+      <div class="bal-amt" style="color:var(--gold)">₹${fmt(a)}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════ MODAL ══════════════════════
+function openM(){
+  populateCSel();
+  renderCG();
+  S.stype='equal';
+  document.querySelectorAll('.stab').forEach((t,i)=>t.classList.toggle('act',i===0));
+  renderSR();
+  document.getElementById('mo').classList.add('open');
+  setTimeout(()=>document.getElementById('e-t').focus(),200);
+}
+
+function closeM(){
+  document.getElementById('mo').classList.remove('open');
+  ['e-t','e-a','e-n'].forEach(id=>document.getElementById(id).value='');
+}
+
+function closeOut(e){if(e.target===document.getElementById('mo'))closeM()}
+
+function renderCG(){
+  document.getElementById('cg').innerHTML=CATS.map(c=>`
+    <button class="cbtn ${c.id===S.scat?'act':''}" onclick="selCat('${c.id}')">
+      <span class="cbtn-ico" style="color:${c.clr}">${c.sym}</span>
+      <span>${c.lbl}</span>
+    </button>`).join('');
+}
+
+function selCat(id){S.scat=id;renderCG()}
+
+function setST(t,btn){
+  S.stype=t;
+  document.querySelectorAll('.stab').forEach(x=>x.classList.remove('act'));
+  btn.classList.add('act');
+  renderSR();
+}
+
+function renderSR(){
+  const el=document.getElementById('sr');
+  if(S.stype==='equal'){el.innerHTML='';return}
+  if(S.stype==='exclude'){
+    el.innerHTML=S.parts.map(p=>`
+      <div class="srow">
+        <div class="av" style="width:26px;height:26px;font-size:10px;background:${avc(p)}">${ini(p)}</div>
+        <span class="srow-name">${p}</span>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;flex-shrink:0">
+          <input type="checkbox" id="ex-${p}" checked style="width:15px;height:15px;accent-color:var(--gold)"> Include
+        </label>
+      </div>`).join('');
+    return;
+  }
+  const unit=S.stype==='percent'?'%':'₹';
+  el.innerHTML=S.parts.map(p=>`
+    <div class="srow">
+      <div class="av" style="width:26px;height:26px;font-size:10px;background:${avc(p)}">${ini(p)}</div>
+      <span class="srow-name">${p}</span>
+      <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+        <span style="color:var(--muted);font-size:12px">${unit}</span>
+        <input type="number" class="inp srow-inp" id="sp-${p}" placeholder="0" min="0">
+      </div>
+    </div>`).join('');
+}
+
+function addExp(){
+  const ttl=document.getElementById('e-t').value.trim();
+  const amt=parseFloat(document.getElementById('e-a').value);
+  const by=document.getElementById('e-p').value;
+  const note=document.getElementById('e-n').value.trim();
+  if(!ttl){toast('Add a description');return}
+  if(!amt||amt<=0){toast('Enter a valid amount');return}
+  let spl={};
+  if(S.stype==='equal'){const ea=amt/S.parts.length;S.parts.forEach(p=>spl[p]=ea)}
+  else if(S.stype==='custom'){
+    let sum=0;
+    S.parts.forEach(p=>{const v=parseFloat(document.getElementById('sp-'+p)?.value||0);spl[p]=v;sum+=v});
+    if(Math.abs(sum-amt)>0.5){toast(`Amounts must total ₹${fmt(amt)} — currently ₹${fmt(sum)}`);return}
+  }
+  else if(S.stype==='percent'){
+    let sum=0;
+    S.parts.forEach(p=>{const v=parseFloat(document.getElementById('sp-'+p)?.value||0);spl[p]=(v/100)*amt;sum+=v});
+    if(Math.abs(sum-100)>0.5){toast(`Percentages must total 100% — currently ${fmt(sum)}%`);return}
+  }
+  else if(S.stype==='exclude'){
+    const inc=S.parts.filter(p=>document.getElementById('ex-'+p)?.checked);
+    if(!inc.length){toast('Include at least one person');return}
+    const ea=amt/inc.length;inc.forEach(p=>spl[p]=ea);
+    S.parts.filter(p=>!inc.includes(p)).forEach(p=>spl[p]=0);
+  }
+  S.exps.push({id:uid(),ttl,amt,by,note,cat:S.scat,st:S.stype,spl,date:today()});
+  closeM();renderAll();toast('Expense added');
+}
+
+// ══════════════════════ EXPORT ══════════════════════
+function genWA(){
+  const txns=calcSettle();
+  const tot=S.exps.reduce((s,e)=>s+e.amt,0);
+  const pend=txns.filter((_,i)=>!S.done.has(i));
+  let m=`*${S.sesh.name}* — Settlement\nCode: ${S.sesh.code}  |  Total: ₹${fmt(tot)}\n\n`;
+  if(pend.length){m+=`*To settle:*\n`;pend.forEach(t=>m+=`${t.fr} → ${t.to}  ₹${fmt(t.a)}\n`)}
+  else{m+='Everyone is settled up! '}
+  m+='\n_SplitScape_';return m;
+}
+
+function showWA(){
+  document.getElementById('wa-prev').textContent=genWA();
+  document.getElementById('wa-sec').style.display='block';
+  document.getElementById('wa-sec').scrollIntoView({behavior:'smooth'});
+}
+
+function copyWA(){navigator.clipboard.writeText(genWA()).then(()=>toast('Copied to clipboard'))}
+
+function copySett(){
+  const txns=calcSettle();
+  const lines=txns.map(t=>`${t.fr} → ${t.to}: ₹${fmt(t.a)}`).join('\n');
+  navigator.clipboard.writeText(lines||'All settled up!').then(()=>toast('Copied'));
+}
+
+function copyCode(){
+  navigator.clipboard.writeText(S.sesh.code).then(()=>toast('Code copied: '+S.sesh.code));
+}
+
+// ══════════════════════ TABS ══════════════════════
+function sw(tab,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('act'));
+  btn.classList.add('act');
+  document.querySelectorAll('.tp').forEach(p=>p.classList.remove('act'));
+  document.getElementById('t-'+tab).classList.add('act');
+}
+
+// ══════════════════════ TOAST ══════════════════════
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2600);
+}
+
+
+// Custom select
+let cselVal = '';
+function populateCSel(){
+  cselVal = S.parts[0]||'';
+  document.getElementById('e-p').value = cselVal;
+  renderCSelVal();
+  const drop = document.getElementById('csel-drop');
+  drop.innerHTML = S.parts.map(p=>`
+    <div class="csel-opt ${p===cselVal?'sel':''}" onclick="setCSelVal('${p}')">
+      <div class="av" style="width:26px;height:26px;font-size:10px;background:${avc(p)}">${ini(p)}</div>
+      <span>${p}</span>
+    </div>`).join('');
+}
+function renderCSelVal(){
+  const el = document.getElementById('csel-val');
+  if(!cselVal){el.innerHTML='<span style="color:var(--muted)">Select person...</span>';return}
+  el.innerHTML=`<div class="av" style="width:24px;height:24px;font-size:9px;background:${avc(cselVal)}">${ini(cselVal)}</div><span>${cselVal}</span>`;
+}
+function setCSelVal(p){
+  cselVal = p;
+  document.getElementById('e-p').value = p;
+  renderCSelVal();
+  document.getElementById('csel-drop').querySelectorAll('.csel-opt').forEach(el=>el.classList.toggle('sel',el.querySelector('span').textContent===p));
+  toggleCSel(true);
+}
+function toggleCSel(forceClose){
+  const trig = document.getElementById('csel-trigger');
+  const drop = document.getElementById('csel-drop');
+  const isOpen = drop.classList.contains('open');
+  if(forceClose||isOpen){trig.classList.remove('open');drop.classList.remove('open')}
+  else{trig.classList.add('open');drop.classList.add('open')}
+}
+document.addEventListener('click',e=>{
+  if(!document.getElementById('csel-wrap')?.contains(e.target)) toggleCSel(true);
+});
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeM()});
+
+// print style
+const ps=document.createElement('style');ps.media='print';
+ps.textContent='.aurora,.grain,.fab,.tabs,.ebar,.mo{display:none!important}body{background:#fff;color:#000}.g,.gs{background:#f8f8f8;border:1px solid #e5e5e5;backdrop-filter:none}*{color:#000!important}#ss,#su{display:none!important}#sa{display:flex!important}';
+document.head.appendChild(ps);
+</script>
+</body>
+</html>
