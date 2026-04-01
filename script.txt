@@ -1,0 +1,9 @@
+1. Open app → type "Goa Trip 2026" → Create
+2. Add 4 friends: Ali, Sara, Raj, Priya → Start Splitting
+3. Add: Hotel ₹3600 → Ali paid → Equal split
+4. Add: Petrol ₹800 → Raj paid → Ride category
+5. Add: Beach dinner ₹1200 → Sara paid → Exclude Priya
+6. Balances tab → show live net amounts
+7. Settle Up → show minimum transactions
+8. WhatsApp button → show the ready-to-send message
+9. Stats tab → show category breakdown chart
